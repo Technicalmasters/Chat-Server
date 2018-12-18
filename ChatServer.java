@@ -3,6 +3,8 @@ package chat.server;
 import java.net.*;
 import java.io.*;
 import java.sql.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 //import java.util.concurrent.TimeUnit;
 
 
@@ -12,11 +14,12 @@ public class ChatServer
 {
     DataInputStream input;
     DataOutputStream output;
-    int auth;
+    int auth,option;
     public Connection con;
     public Statement stmt;
     public  ResultSet rs;
-    Socket Client_accept;    
+    Socket Client_accept; 
+    
      public void connect() 
     {
         try 
@@ -60,10 +63,33 @@ public class ChatServer
     }
         
 
+    
+    void  new_Account()
+    {
+        try 
+        {
+            String username=input.readUTF();
+            String password=input.readUTF();
+            rs=stmt.executeQuery("insert into users values('"+username+"','"+password+"')");
+            output.writeUTF("Sucessfully Registered");
+            output.flush();
+            System.out.println("Registration complete");
+        } 
+        catch (IOException | SQLException ex) 
+        {
+            System.out.println("newAccount error :"+ex);
+        }
+        
+    }
+    
+    
+    
+    
         
     //creating function to start listening on the socket
     public void start_listening()
     {   
+        String username,password;
         try
         {  
             ServerSocket server=new ServerSocket(9000);
@@ -75,26 +101,33 @@ public class ChatServer
                 
                 input=new DataInputStream(new BufferedInputStream(Client_accept.getInputStream()));
                 output=new DataOutputStream(new BufferedOutputStream(Client_accept.getOutputStream())); 
-                
-                auth=authenticate();
-                
-                switch (auth) {
+                option=Integer.parseInt(input.readUTF());
+                //option=2;
+                switch(option)
+                {
                     case 1:
-                        output.writeUTF("Congratulation Successful completion");
-                        output.flush();             
-                        ChatHandler client=new ChatHandler(Client_accept);
-                        client.start();
+                        new_Account();
                         break;
-                    case 0:
-                        output.writeUTF("Sorry You need to Register first");
-                        output.flush();
-                        break;
-                    default:
-                        System.out.println("Error in authentication");
-                        break;
-                }
-            }
-            
+                    case 2:
+                         auth=authenticate();
+                         switch (auth)
+                         {
+                         case 1:
+                            output.writeUTF("Congratulation Successful completion");
+                            output.flush();             
+                            ChatHandler client=new ChatHandler(Client_accept);
+                            client.start();
+                            break;
+                         case 0:
+                            output.writeUTF("Sorry You need to Register first");
+                            output.flush();
+                            break;
+                         default:
+                            System.out.println("Error in authentication");
+                            break;
+                        }
+                }  
+            }  
         }
         catch(IOException e)
         {
